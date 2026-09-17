@@ -1,0 +1,12 @@
+[package]
+name = "nomenclature"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+sea-orm.workspace = true
+serde.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+regex.workspace = true

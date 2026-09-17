@@ -1,0 +1,17 @@
+[package]
+name = "migration"
+edition.workspace = true
+version.workspace = true
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[dependencies]
+sea-orm-migration.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+
+[[bin]]
+name = "migrate"
+path = "src/main.rs"
