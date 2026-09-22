@@ -170,17 +170,31 @@ pub async fn link_serial_number_to_shipment_line(
     Ok(active.update(db).await?)
 }
 
+#[derive(Debug, Default, Deserialize)]
+pub struct ListSerialNumbersFilter {
+    pub product_id: Option<Uuid>,
+    pub status: Option<String>,
+    /// Exact match — lets the caller check whether a scanned value already exists.
+    pub value: Option<String>,
+    pub shipment_line_id: Option<Uuid>,
+}
+
 pub async fn list_serial_numbers(
     db: &DatabaseConnection,
-    product_id: Option<Uuid>,
-    status: Option<String>,
+    filter: ListSerialNumbersFilter,
 ) -> AppResult<Vec<serial_number::Model>> {
     let mut query = serial_number::Entity::find();
-    if let Some(pid) = product_id {
+    if let Some(pid) = filter.product_id {
         query = query.filter(serial_number::Column::ProductId.eq(pid));
     }
-    if let Some(s) = status {
+    if let Some(s) = filter.status {
         query = query.filter(serial_number::Column::Status.eq(s));
+    }
+    if let Some(v) = filter.value {
+        query = query.filter(serial_number::Column::Value.eq(v));
+    }
+    if let Some(line_id) = filter.shipment_line_id {
+        query = query.filter(serial_number::Column::ShipmentLineId.eq(line_id));
     }
     Ok(query.all(db).await?)
 }

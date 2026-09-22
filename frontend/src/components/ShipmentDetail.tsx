@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { api } from "../api"
 import { errorMessage, useToast } from "../toast"
-import { Button, Card, Input, Label, Select, Table, Td, Th } from "./ui"
+import { Button, Input, Label, Select, Table, Td, Th } from "./ui"
 
 const STATUSES = ["pending", "ready", "sent_to_sendcloud", "shipped"]
 
@@ -51,11 +51,11 @@ export function ShipmentDetail({ id }: { id: string }) {
     onError: (err) => showToast("error", errorMessage(err)),
   })
 
-  if (!detail.data) return null
+  if (!detail.data) return <p className="text-sm text-slate-500">Chargement…</p>
   const { shipment, lines, sendcloud_order } = detail.data
 
   return (
-    <Card className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div>
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           {shipment.invoice_number} — {shipment.customer_name}
@@ -166,6 +166,6 @@ export function ShipmentDetail({ id }: { id: string }) {
           </form>
         )}
       </div>
-    </Card>
+    </div>
   )
 }

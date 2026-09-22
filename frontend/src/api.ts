@@ -96,8 +96,15 @@ export const api = {
   ) => apiFetch<Product>(`/products/${id}`, { method: "PUT", body: JSON.stringify(input) }),
   deleteProduct: (id: string) => apiFetch<null>(`/products/${id}`, { method: "DELETE" }),
 
-  listSerialNumbers: (params?: { product_id?: string; status?: string }) => {
-    const query = new URLSearchParams(params as Record<string, string>).toString()
+  listSerialNumbers: (params?: {
+    product_id?: string
+    status?: string
+    value?: string
+    shipment_line_id?: string
+  }) => {
+    const query = new URLSearchParams(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined) as [string, string][],
+    ).toString()
     return apiFetch<SerialNumber[]>(`/serial-numbers${query ? `?${query}` : ""}`)
   },
   createSerialNumber: (input: { product_id: string; value: string }) =>

@@ -54,7 +54,10 @@ de santé Fly). Le navigateur affiche une invite native au premier accès.
   `detection_pattern` : regex optionnelle pour la détection automatique)
 - `GET/PUT/DELETE /products/:id` — consulter/éditer/supprimer un produit
   (la suppression échoue si des S/N y sont encore rattachés)
-- `GET /serial-numbers?product_id=&status=` — lister les S/N (filtres optionnels)
+- `GET /serial-numbers?product_id=&status=&value=&shipment_line_id=` — lister les
+  S/N (filtres optionnels ; `value` fait une recherche exacte, utile pour vérifier
+  si un S/N scanné existe déjà ; `shipment_line_id` liste les S/N déjà rattachés à
+  une ligne de préparation)
 - `POST /serial-numbers` — enregistrer un S/N pour un produit
 - `POST /serial-numbers/:id/assign` — associer un S/N à un client avant packing
 - `DELETE /serial-numbers/:id` — supprimer un S/N

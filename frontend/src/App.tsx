@@ -1,17 +1,19 @@
 import { useState } from "react"
+import { PackingPage } from "./components/PackingPage"
 import { ProductsPage } from "./components/ProductsPage"
 import { SerialNumbersPage } from "./components/SerialNumbersPage"
 import { ShipmentsPage } from "./components/ShipmentsPage"
 import { ToastProvider } from "./toast"
 
 const TABS = [
+  { id: "packing", label: "Préparation", render: () => <PackingPage /> },
+  { id: "shipments", label: "Expéditions", render: () => <ShipmentsPage /> },
   { id: "products", label: "Produits", render: () => <ProductsPage /> },
   { id: "serials", label: "Numéros de série", render: () => <SerialNumbersPage /> },
-  { id: "shipments", label: "Expéditions", render: () => <ShipmentsPage /> },
 ] as const
 
 export default function App() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("products")
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("packing")
 
   return (
     <ToastProvider>

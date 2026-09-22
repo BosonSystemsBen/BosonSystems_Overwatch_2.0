@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { api } from "../api"
 import { errorMessage, useToast } from "../toast"
 import { Button, Card, Code, Input, Label, Table, Td, Th } from "./ui"
@@ -10,8 +10,17 @@ export function ProductsPage() {
   const showToast = useToast()
   const queryClient = useQueryClient()
   const [form, setForm] = useState(emptyForm)
+  const [search, setSearch] = useState("")
 
   const products = useQuery({ queryKey: ["products"], queryFn: api.listProducts })
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return products.data ?? []
+    return (products.data ?? []).filter(
+      (p) => p.sku.toLowerCase().includes(term) || p.name.toLowerCase().includes(term),
+    )
+  }, [products.data, search])
 
   const createProduct = useMutation({
     mutationFn: () =>
@@ -87,6 +96,13 @@ export function ProductsPage() {
         </form>
       </Card>
 
+      <Input
+        placeholder="Rechercher (SKU, nom)..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-sm"
+      />
+
       <Table>
         <thead>
           <tr>
@@ -99,7 +115,7 @@ export function ProductsPage() {
           </tr>
         </thead>
         <tbody>
-          {products.data?.map((p) => (
+          {filtered.map((p) => (
             <tr key={p.id}>
               <Td>{p.sku}</Td>
               <Td>{p.name}</Td>
@@ -113,6 +129,13 @@ export function ProductsPage() {
               </Td>
             </tr>
           ))}
+          {filtered.length === 0 && (
+            <tr>
+              <Td colSpan={6} className="text-center text-slate-400">
+                Aucun produit ne correspond.
+              </Td>
+            </tr>
+          )}
         </tbody>
       </Table>
     </div>

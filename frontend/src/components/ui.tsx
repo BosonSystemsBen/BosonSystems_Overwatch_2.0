@@ -1,4 +1,12 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react"
+import { forwardRef, useEffect } from "react"
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  LabelHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TdHTMLAttributes,
+} from "react"
 
 export function Button({
   variant = "primary",
@@ -19,19 +27,23 @@ export function Button({
   )
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
+  { className = "", ...props },
+  ref,
+) {
   return (
     <input
-      className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      ref={ref}
+      className={`rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${className}`}
       {...props}
     />
   )
-}
+})
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      className={`rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${className}`}
       {...props}
     />
   )
@@ -72,9 +84,58 @@ export function Th({ children }: { children?: ReactNode }) {
   )
 }
 
-export function Td({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Td({
+  children,
+  className = "",
+  ...props
+}: TdHTMLAttributes<HTMLTableCellElement> & { className?: string }) {
   return (
-    <td className={`border-b border-slate-100 px-3 py-2 dark:border-slate-800 ${className}`}>{children}</td>
+    <td className={`border-b border-slate-100 px-3 py-2 dark:border-slate-800 ${className}`} {...props}>
+      {children}
+    </td>
+  )
+}
+
+export function Drawer({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean
+  onClose: () => void
+  title?: ReactNode
+  children: ReactNode
+}) {
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative flex h-full w-full max-w-xl flex-col gap-4 overflow-y-auto bg-white p-6 shadow-xl dark:bg-slate-900">
+        <div className="flex items-center justify-between">
+          <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
   )
 }
 

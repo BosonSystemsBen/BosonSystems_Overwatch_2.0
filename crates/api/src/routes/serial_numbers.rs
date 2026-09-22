@@ -3,7 +3,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use nomenclature::service::{self, NewSerialNumber};
+use nomenclature::service::{self, ListSerialNumbersFilter, NewSerialNumber};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -21,13 +21,24 @@ pub fn router() -> Router<AppState> {
 struct ListParams {
     product_id: Option<Uuid>,
     status: Option<String>,
+    value: Option<String>,
+    shipment_line_id: Option<Uuid>,
 }
 
 async fn list(
     State(state): State<AppState>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Vec<nomenclature::entities::serial_number::Model>>, ApiError> {
-    let items = service::list_serial_numbers(&state.db, params.product_id, params.status).await?;
+    let items = service::list_serial_numbers(
+        &state.db,
+        ListSerialNumbersFilter {
+            product_id: params.product_id,
+            status: params.status,
+            value: params.value,
+            shipment_line_id: params.shipment_line_id,
+        },
+    )
+    .await?;
     Ok(Json(items))
 }
 
