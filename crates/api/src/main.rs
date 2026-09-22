@@ -2,7 +2,7 @@ mod error;
 mod routes;
 mod state;
 
-use axum::{routing::get, Router};
+use axum::{response::Html, routing::get, Router};
 use common::Config;
 use pennylane::PennylaneClient;
 use sea_orm::Database;
@@ -26,6 +26,10 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(|| async { "ok" }))
+        .route(
+            "/",
+            get(|| async { Html(include_str!("../static/index.html")) }),
+        )
         .merge(routes::products::router())
         .merge(routes::serial_numbers::router())
         .merge(routes::shipments::router())
