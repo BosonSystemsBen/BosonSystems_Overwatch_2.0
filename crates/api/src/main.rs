@@ -2,13 +2,13 @@ mod error;
 mod routes;
 mod state;
 
-use axum::{response::Html, routing::get, Router};
+use axum::{routing::get, Router};
 use common::Config;
 use pennylane::PennylaneClient;
 use sea_orm::Database;
 use sendcloud::SendcloudClient;
 use state::AppState;
-use tower_http::validate_request::ValidateRequestHeaderLayer;
+use tower_http::{services::ServeDir, validate_request::ValidateRequestHeaderLayer};
 
 #[tokio::main]
 async fn main() {
@@ -39,14 +39,11 @@ async fn main() {
     let state = AppState { db, pennylane, sendcloud };
 
     let protected = Router::new()
-        .route(
-            "/",
-            get(|| async { Html(include_str!("../static/index.html")) }),
-        )
         .merge(routes::products::router())
         .merge(routes::serial_numbers::router())
         .merge(routes::shipments::router())
         .with_state(state)
+        .fallback_service(ServeDir::new("frontend/dist"))
         .layer({
             #[allow(deprecated)] // the simple username/password check is exactly what we want here
             ValidateRequestHeaderLayer::basic(&config.app_username, &config.app_password)

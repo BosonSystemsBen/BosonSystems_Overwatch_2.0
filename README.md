@@ -18,8 +18,10 @@ Workspace Cargo multi-crates :
   Pennylane, liées à la nomenclature et aux S/N
 - `crates/sendcloud` — client HTTP vers l'API v3 Sendcloud (Orders API,
   pour validation humaine avant étiquetage)
-- `crates/api` — serveur HTTP (Axum) exposant les modules
+- `crates/api` — serveur HTTP (Axum) exposant les modules, et qui sert aussi
+  le frontend construit (`frontend/dist`)
 - `migration` — migrations de schéma (SeaORM)
+- `frontend/` — dashboard React + TypeScript + Tailwind + TanStack Query
 
 D'autres crates (`worker`) seront ajoutés module par module.
 
@@ -29,10 +31,16 @@ D'autres crates (`worker`) seront ajoutés module par module.
 cp .env.example .env
 docker compose up -d postgres
 cargo run --bin migrate -- up
+cd frontend && npm install && npm run build && cd ..
 cargo run --bin api
 ```
 
-L'API écoute sur `http://localhost:8080`.
+L'API (et le dashboard) écoute sur `http://localhost:8080`.
+
+Pour itérer sur le frontend avec rechargement à chaud (pendant que l'API
+tourne sur le port 8080) : `cd frontend && npm run dev` puis ouvrir
+`http://localhost:5173` (les appels API sont automatiquement redirigés vers
+le port 8080 via le proxy Vite).
 
 ## Authentification
 
