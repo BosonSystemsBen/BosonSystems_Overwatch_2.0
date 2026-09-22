@@ -30,6 +30,8 @@ pub struct CustomerInvoiceLine {
     pub description: String,
     /// Pennylane returns this as a string (e.g. "12"), not a number.
     pub quantity: String,
+    /// Total line amount in euros, as a string (e.g. "50.4").
+    pub amount: String,
     pub product: Option<IdRef>,
 }
 

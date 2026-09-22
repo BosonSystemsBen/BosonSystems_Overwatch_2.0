@@ -1,4 +1,4 @@
-use crate::types::{ShipmentRequest, ShipmentResponse, ShipmentResponseData};
+use crate::types::{Order, OrderResponseItem, OrdersResponse};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SendcloudError {
@@ -41,48 +41,41 @@ impl SendcloudClient {
         }
     }
 
-    /// Announces a shipment (creates the label). If `request.external_reference_id`
-    /// was already used before, Sendcloud returns the existing shipment (HTTP 409)
-    /// instead of creating a new one — this call treats that as success.
-    pub async fn announce_shipment(
-        &self,
-        request: &ShipmentRequest,
-    ) -> SendcloudResult<ShipmentResponseData> {
-        let url = format!("{}/shipments/announce", self.base_url);
+    /// Pushes an order to Sendcloud for human review. This is an upsert on
+    /// (order_id, integration.id): sending the same order again just updates
+    /// it, it never creates a label or incurs a carrier charge by itself.
+    pub async fn create_order(&self, order: &Order) -> SendcloudResult<OrderResponseItem> {
+        let url = format!("{}/orders", self.base_url);
         let response = self
             .http
             .post(&url)
             .basic_auth(&self.public_key, Some(&self.private_key))
-            .json(request)
+            .json(&[order])
             .send()
             .await?;
 
         let status = response.status();
         let body = response.text().await?;
 
-        if status.as_u16() == 201 {
-            let parsed: ShipmentResponse = serde_json::from_str(&body).map_err(|e| {
-                SendcloudError::Api {
-                    status: status.as_u16(),
-                    message: format!("réponse inattendue de Sendcloud: {e}"),
-                }
-            })?;
-            return Ok(parsed.data);
+        if !status.is_success() {
+            return Err(SendcloudError::Api {
+                status: status.as_u16(),
+                message: extract_error_message(&body),
+            });
         }
 
-        if status.as_u16() == 409 {
-            let parsed: ShipmentResponseData = serde_json::from_str(&body).map_err(|e| {
-                SendcloudError::Api {
-                    status: status.as_u16(),
-                    message: format!("réponse inattendue de Sendcloud: {e}"),
-                }
-            })?;
-            return Ok(parsed);
-        }
-
-        Err(SendcloudError::Api {
+        let parsed: OrdersResponse = serde_json::from_str(&body).map_err(|e| SendcloudError::Api {
             status: status.as_u16(),
-            message: extract_error_message(&body),
-        })
+            message: format!("réponse inattendue de Sendcloud: {e}"),
+        })?;
+
+        parsed
+            .data
+            .into_iter()
+            .next()
+            .ok_or_else(|| SendcloudError::Api {
+                status: status.as_u16(),
+                message: "Sendcloud n'a renvoyé aucune commande".to_string(),
+            })
     }
 }

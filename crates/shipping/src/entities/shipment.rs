@@ -37,6 +37,7 @@ impl ActiveModelBehavior for ActiveModel {}
 pub mod status {
     pub const PENDING: &str = "pending";
     pub const READY: &str = "ready";
-    pub const LABELED: &str = "labeled";
+    /// Pushed to Sendcloud as an order for human review — no label created yet.
+    pub const SENT_TO_SENDCLOUD: &str = "sent_to_sendcloud";
     pub const SHIPPED: &str = "shipped";
 }

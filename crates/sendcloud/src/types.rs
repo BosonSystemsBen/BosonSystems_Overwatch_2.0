@@ -14,96 +14,100 @@ pub struct Address {
 }
 
 #[derive(Debug, Serialize)]
-pub struct FromAddress {
-    pub sender_address_id: i64,
+pub struct Price {
+    pub value: f64,
+    pub currency: &'static str,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ShippingOptionCodeProperties {
-    pub shipping_option_code: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub contract_id: Option<i64>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ShipWith {
-    #[serde(rename = "type")]
-    pub kind: &'static str,
-    pub properties: ShippingOptionCodeProperties,
-}
-
-impl ShipWith {
-    pub fn shipping_option_code(shipping_option_code: String, contract_id: Option<i64>) -> Self {
+impl Price {
+    pub fn eur(value: f64) -> Self {
         Self {
-            kind: "shipping_option_code",
-            properties: ShippingOptionCodeProperties {
-                shipping_option_code,
-                contract_id,
-            },
+            value,
+            currency: "EUR",
         }
     }
 }
 
 #[derive(Debug, Serialize)]
+pub struct Integration {
+    pub id: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OrderStatus {
+    pub code: &'static str,
+    pub message: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OrderItem {
+    pub name: String,
+    pub quantity: i32,
+    pub total_price: Price,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OrderDetails {
+    pub integration: Integration,
+    pub status: OrderStatus,
+    pub order_created_at: String,
+    pub order_items: Vec<OrderItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PaymentDetails {
+    pub total_price: Price,
+    pub status: OrderStatus,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Weight {
-    pub value: String,
+    pub value: f64,
     pub unit: &'static str,
 }
 
 impl Weight {
     pub fn kg(value_kg: f64) -> Self {
         Self {
-            value: format!("{value_kg:.3}"),
+            value: value_kg,
             unit: "kg",
         }
     }
 }
 
 #[derive(Debug, Serialize)]
-pub struct Parcel {
+pub struct Measurement {
     pub weight: Weight,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ShipmentRequest {
-    pub to_address: Address,
-    pub from_address: FromAddress,
-    pub ship_with: ShipWith,
-    pub parcels: Vec<Parcel>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub order_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub external_reference_id: Option<String>,
+pub struct ShippingDetails {
+    pub measurement: Measurement,
+}
+
+/// An order pushed to Sendcloud for a human to review, complete customs
+/// details on, and create the label from — this call never creates a label
+/// or incurs any carrier charge by itself.
+#[derive(Debug, Serialize)]
+pub struct Order {
+    pub order_id: String,
+    pub order_number: String,
+    pub order_details: OrderDetails,
+    pub payment_details: PaymentDetails,
+    pub shipping_address: Address,
+    pub shipping_details: ShippingDetails,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Document {
-    pub document_type: Option<String>,
-    pub link: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Status {
-    pub code: String,
-    pub message: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ParcelResponse {
+pub struct OrderResponseItem {
     pub id: i64,
-    pub status: Option<Status>,
-    #[serde(default)]
-    pub documents: Vec<Document>,
-    pub tracking_number: Option<String>,
-    pub tracking_url: Option<String>,
-    /// Base64-encoded label file, only present when the shipment has a single parcel.
-    pub label_file: Option<String>,
+    pub order_id: String,
+    pub order_number: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Carrier {
-    pub code: String,
-    pub name: String,
+pub struct OrdersResponse {
+    pub data: Vec<OrderResponseItem>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -111,19 +115,4 @@ pub struct ErrorObject {
     pub status: Option<String>,
     pub code: Option<String>,
     pub detail: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ShipmentResponseData {
-    pub id: String,
-    #[serde(default)]
-    pub parcels: Vec<ParcelResponse>,
-    pub carrier: Option<Carrier>,
-    #[serde(default)]
-    pub errors: Vec<ErrorObject>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ShipmentResponse {
-    pub data: ShipmentResponseData,
 }

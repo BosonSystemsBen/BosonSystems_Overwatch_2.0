@@ -27,9 +27,7 @@ pub struct Config {
     pub sendcloud_base_url: String,
     pub sendcloud_public_key: Option<String>,
     pub sendcloud_private_key: Option<String>,
-    pub sendcloud_sender_address_id: Option<i64>,
-    pub sendcloud_shipping_option_code: Option<String>,
-    pub sendcloud_contract_id: Option<i64>,
+    pub sendcloud_integration_id: Option<i64>,
 }
 
 impl Config {
@@ -46,11 +44,7 @@ impl Config {
                 .unwrap_or_else(|_| "https://panel.sendcloud.sc/api/v3".to_string()),
             sendcloud_public_key: std::env::var("SENDCLOUD_PUBLIC_KEY").ok(),
             sendcloud_private_key: std::env::var("SENDCLOUD_PRIVATE_KEY").ok(),
-            sendcloud_sender_address_id: std::env::var("SENDCLOUD_SENDER_ADDRESS_ID")
-                .ok()
-                .and_then(|v| v.parse().ok()),
-            sendcloud_shipping_option_code: std::env::var("SENDCLOUD_SHIPPING_OPTION_CODE").ok(),
-            sendcloud_contract_id: std::env::var("SENDCLOUD_CONTRACT_ID")
+            sendcloud_integration_id: std::env::var("SENDCLOUD_INTEGRATION_ID")
                 .ok()
                 .and_then(|v| v.parse().ok()),
         }

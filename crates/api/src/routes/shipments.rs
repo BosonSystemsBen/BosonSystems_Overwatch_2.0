@@ -5,9 +5,12 @@ use axum::{
 };
 use common::AppError;
 use pennylane::PennylaneClient;
-use sendcloud::types::{Address, FromAddress, Parcel, ShipWith, ShipmentRequest, Weight};
+use sendcloud::types::{
+    Address, Integration, Measurement, Order, OrderDetails, OrderItem, OrderStatus,
+    PaymentDetails, Price, ShippingDetails, Weight,
+};
 use serde::{Deserialize, Serialize};
-use shipping::service::{self, NewSendcloudLabel, NewShipment, NewShipmentLine};
+use shipping::service::{self, NewSendcloudOrder, NewShipment, NewShipmentLine};
 use uuid::Uuid;
 
 use crate::{error::ApiError, state::AppState};
@@ -17,7 +20,10 @@ pub fn router() -> Router<AppState> {
         .route("/shipments", get(list))
         .route("/shipments/:id", get(get_one))
         .route("/shipments/:id/status", axum::routing::put(update_status))
-        .route("/shipments/:id/create-label", axum::routing::post(create_label))
+        .route(
+            "/shipments/:id/send-to-sendcloud",
+            axum::routing::post(send_to_sendcloud),
+        )
         .route("/pennylane/sync", axum::routing::post(sync))
         .route(
             "/shipment-lines/:id/link-serial-number",
@@ -35,7 +41,7 @@ async fn list(
 struct ShipmentDetail {
     shipment: shipping::entities::shipment::Model,
     lines: Vec<shipping::entities::shipment_line::Model>,
-    label: Option<shipping::entities::sendcloud_label::Model>,
+    sendcloud_order: Option<shipping::entities::sendcloud_order::Model>,
 }
 
 async fn get_one(
@@ -44,8 +50,12 @@ async fn get_one(
 ) -> Result<Json<ShipmentDetail>, ApiError> {
     let shipment = service::get_shipment(&state.db, id).await?;
     let lines = service::list_shipment_lines(&state.db, id).await?;
-    let label = service::get_label_for_shipment(&state.db, id).await?;
-    Ok(Json(ShipmentDetail { shipment, lines, label }))
+    let sendcloud_order = service::get_sendcloud_order_for_shipment(&state.db, id).await?;
+    Ok(Json(ShipmentDetail {
+        shipment,
+        lines,
+        sendcloud_order,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -113,38 +123,70 @@ fn sendcloud_err(e: sendcloud::SendcloudError) -> AppError {
 }
 
 #[derive(Deserialize)]
-struct CreateLabelInput {
+struct SendToSendcloudInput {
     weight_kg: f64,
 }
 
-#[derive(Serialize)]
-struct CreateLabelResult {
-    label: shipping::entities::sendcloud_label::Model,
-    label_file_base64: Option<String>,
-}
-
-async fn create_label(
+/// Pushes the shipment to Sendcloud as an order for human review. This never
+/// creates a label or incurs a carrier charge — a person completes customs
+/// details (if any) and creates the label from the Sendcloud panel.
+async fn send_to_sendcloud(
     State(state): State<AppState>,
     Path(shipment_id): Path<Uuid>,
-    Json(input): Json<CreateLabelInput>,
-) -> Result<Json<CreateLabelResult>, ApiError> {
-    let (client, settings) = state.sendcloud.as_ref().ok_or_else(|| {
+    Json(input): Json<SendToSendcloudInput>,
+) -> Result<Json<shipping::entities::sendcloud_order::Model>, ApiError> {
+    let (client, integration_id) = state.sendcloud.as_ref().ok_or_else(|| {
         AppError::External(
-            "Sendcloud n'est pas configuré (SENDCLOUD_PUBLIC_KEY/PRIVATE_KEY/SENDER_ADDRESS_ID/SHIPPING_OPTION_CODE manquants)".into(),
+            "Sendcloud n'est pas configuré (SENDCLOUD_PUBLIC_KEY/PRIVATE_KEY/INTEGRATION_ID manquants)".into(),
         )
     })?;
 
-    if let Some(existing) = service::get_label_for_shipment(&state.db, shipment_id).await? {
-        return Ok(Json(CreateLabelResult {
-            label: existing,
-            label_file_base64: None,
-        }));
+    if let Some(existing) = service::get_sendcloud_order_for_shipment(&state.db, shipment_id).await? {
+        return Ok(Json(existing));
     }
 
     let shipment = service::get_shipment(&state.db, shipment_id).await?;
+    let lines = service::list_shipment_lines(&state.db, shipment_id).await?;
 
-    let request = ShipmentRequest {
-        to_address: Address {
+    let order_items: Vec<OrderItem> = lines
+        .iter()
+        .map(|l| {
+            let amount = l
+                .amount_eur
+                .as_deref()
+                .and_then(|a| a.parse::<f64>().ok())
+                .unwrap_or(0.0);
+            let quantity = l.quantity.parse::<f64>().unwrap_or(1.0).round().max(1.0) as i32;
+            OrderItem {
+                name: l.label.clone(),
+                quantity,
+                total_price: Price::eur(amount),
+            }
+        })
+        .collect();
+
+    let total_price_eur: f64 = order_items.iter().map(|i| i.total_price.value).sum();
+
+    let order = Order {
+        order_id: shipment.id.to_string(),
+        order_number: shipment.invoice_number.clone(),
+        order_details: OrderDetails {
+            integration: Integration { id: *integration_id },
+            status: OrderStatus {
+                code: "to_review",
+                message: "À valider (douane) avant expédition",
+            },
+            order_created_at: shipment.created_at.to_rfc3339(),
+            order_items,
+        },
+        payment_details: PaymentDetails {
+            total_price: Price::eur(total_price_eur),
+            status: OrderStatus {
+                code: "n/a",
+                message: "Statut de paiement non suivi par Overwatch",
+            },
+        },
+        shipping_address: Address {
             name: shipment.customer_name.clone(),
             address_line_1: shipment.delivery_address.clone(),
             postal_code: shipment.delivery_postal_code.clone(),
@@ -153,68 +195,33 @@ async fn create_label(
             email: None,
             phone_number: None,
         },
-        from_address: FromAddress {
-            sender_address_id: settings.sender_address_id,
+        shipping_details: ShippingDetails {
+            measurement: Measurement {
+                weight: Weight::kg(input.weight_kg),
+            },
         },
-        ship_with: ShipWith::shipping_option_code(
-            settings.shipping_option_code.clone(),
-            settings.contract_id,
-        ),
-        parcels: vec![Parcel {
-            weight: Weight::kg(input.weight_kg),
-        }],
-        order_number: Some(shipment.invoice_number.clone()),
-        external_reference_id: Some(shipment.id.to_string()),
     };
 
-    let response = client.announce_shipment(&request).await.map_err(sendcloud_err)?;
+    let response = client.create_order(&order).await.map_err(sendcloud_err)?;
 
-    if !response.errors.is_empty() {
-        let message = response
-            .errors
-            .into_iter()
-            .filter_map(|e| e.detail)
-            .collect::<Vec<_>>()
-            .join("; ");
-        return Err(AppError::External(format!("annonce du colis refusée par le transporteur: {message}")).into());
-    }
-
-    let parcel = response
-        .parcels
-        .into_iter()
-        .next()
-        .ok_or_else(|| AppError::External("Sendcloud n'a renvoyé aucun colis".into()))?;
-
-    let label_link = parcel
-        .documents
-        .iter()
-        .find(|d| d.document_type.as_deref() == Some("label"))
-        .and_then(|d| d.link.clone());
-
-    let label = service::record_label(
+    let sendcloud_order = service::record_sendcloud_order(
         &state.db,
-        NewSendcloudLabel {
+        NewSendcloudOrder {
             shipment_id,
-            sendcloud_shipment_id: response.id,
-            sendcloud_parcel_id: parcel.id,
-            tracking_number: parcel.tracking_number,
-            tracking_url: parcel.tracking_url,
-            label_link,
-            status: parcel
-                .status
-                .map(|s| s.code)
-                .unwrap_or_else(|| "unknown".to_string()),
+            sendcloud_order_id: response.id,
+            order_number: response.order_number,
         },
     )
     .await?;
 
-    service::update_shipment_status(&state.db, shipment_id, shipping::entities::shipment::status::LABELED.to_string())
-        .await?;
+    service::update_shipment_status(
+        &state.db,
+        shipment_id,
+        shipping::entities::shipment::status::SENT_TO_SENDCLOUD.to_string(),
+    )
+    .await?;
 
-    Ok(Json(CreateLabelResult {
-        label,
-        label_file_base64: parcel.label_file,
-    }))
+    Ok(Json(sendcloud_order))
 }
 
 async fn sync_invoices(
@@ -261,6 +268,7 @@ async fn sync_invoices(
                         product_id,
                         label: line.label,
                         quantity: line.quantity,
+                        amount_eur: Some(line.amount),
                     });
                 }
 

@@ -6,7 +6,7 @@ use sea_orm::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::entities::{sendcloud_label, shipment, shipment_line};
+use crate::entities::{sendcloud_order, shipment, shipment_line};
 
 #[derive(Debug, Deserialize)]
 pub struct NewShipmentLine {
@@ -14,6 +14,7 @@ pub struct NewShipmentLine {
     pub product_id: Option<Uuid>,
     pub label: String,
     pub quantity: String,
+    pub amount_eur: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,6 +71,7 @@ pub async fn upsert_shipment(
             product_id: Set(line.product_id),
             label: Set(line.label),
             quantity: Set(line.quantity),
+            amount_eur: Set(line.amount_eur),
             created_at: Set(now),
             updated_at: Set(now),
         };
@@ -130,42 +132,34 @@ pub async fn update_shipment_status(
 }
 
 #[derive(Debug, Deserialize)]
-pub struct NewSendcloudLabel {
+pub struct NewSendcloudOrder {
     pub shipment_id: Uuid,
-    pub sendcloud_shipment_id: String,
-    pub sendcloud_parcel_id: i64,
-    pub tracking_number: Option<String>,
-    pub tracking_url: Option<String>,
-    pub label_link: Option<String>,
-    pub status: String,
+    pub sendcloud_order_id: i64,
+    pub order_number: String,
 }
 
-pub async fn record_label(
+pub async fn record_sendcloud_order(
     db: &DatabaseConnection,
-    input: NewSendcloudLabel,
-) -> AppResult<sendcloud_label::Model> {
+    input: NewSendcloudOrder,
+) -> AppResult<sendcloud_order::Model> {
     let now = Utc::now();
-    let model = sendcloud_label::ActiveModel {
+    let model = sendcloud_order::ActiveModel {
         id: Set(Uuid::new_v4()),
         shipment_id: Set(input.shipment_id),
-        sendcloud_shipment_id: Set(input.sendcloud_shipment_id),
-        sendcloud_parcel_id: Set(input.sendcloud_parcel_id),
-        tracking_number: Set(input.tracking_number),
-        tracking_url: Set(input.tracking_url),
-        label_link: Set(input.label_link),
-        status: Set(input.status),
+        sendcloud_order_id: Set(input.sendcloud_order_id),
+        order_number: Set(input.order_number),
         created_at: Set(now),
         updated_at: Set(now),
     };
     Ok(model.insert(db).await?)
 }
 
-pub async fn get_label_for_shipment(
+pub async fn get_sendcloud_order_for_shipment(
     db: &DatabaseConnection,
     shipment_id: Uuid,
-) -> AppResult<Option<sendcloud_label::Model>> {
-    Ok(sendcloud_label::Entity::find()
-        .filter(sendcloud_label::Column::ShipmentId.eq(shipment_id))
+) -> AppResult<Option<sendcloud_order::Model>> {
+    Ok(sendcloud_order::Entity::find()
+        .filter(sendcloud_order::Column::ShipmentId.eq(shipment_id))
         .one(db)
         .await?)
 }

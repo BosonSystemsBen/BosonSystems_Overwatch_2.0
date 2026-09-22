@@ -1,3 +1,3 @@
-pub mod sendcloud_label;
+pub mod sendcloud_order;
 pub mod shipment;
 pub mod shipment_line;

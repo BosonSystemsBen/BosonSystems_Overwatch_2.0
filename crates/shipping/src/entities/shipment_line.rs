@@ -12,6 +12,7 @@ pub struct Model {
     pub product_id: Option<Uuid>,
     pub label: String,
     pub quantity: String,
+    pub amount_eur: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

@@ -7,7 +7,7 @@ use common::Config;
 use pennylane::PennylaneClient;
 use sea_orm::Database;
 use sendcloud::SendcloudClient;
-use state::{AppState, SendcloudSettings};
+use state::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -26,16 +26,11 @@ async fn main() {
     let sendcloud = match (
         config.sendcloud_public_key.clone(),
         config.sendcloud_private_key.clone(),
-        config.sendcloud_sender_address_id,
-        config.sendcloud_shipping_option_code.clone(),
+        config.sendcloud_integration_id,
     ) {
-        (Some(public_key), Some(private_key), Some(sender_address_id), Some(shipping_option_code)) => Some((
+        (Some(public_key), Some(private_key), Some(integration_id)) => Some((
             SendcloudClient::new(config.sendcloud_base_url.clone(), public_key, private_key),
-            SendcloudSettings {
-                sender_address_id,
-                shipping_option_code,
-                contract_id: config.sendcloud_contract_id,
-            },
+            integration_id,
         )),
         _ => None,
     };

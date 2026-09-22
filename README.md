@@ -62,7 +62,7 @@ lignes de facture soient automatiquement rattachées à la nomenclature.
 - `GET /shipments` — lister les commandes à préparer
 - `GET /shipments/:id` — détail d'une commande avec ses lignes
 - `PUT /shipments/:id/status` — changer le statut (`pending`, `ready`,
-  `labeled`, `shipped`) — toujours modifiable manuellement
+  `sent_to_sendcloud`, `shipped`) — toujours modifiable manuellement
 - `POST /shipment-lines/:id/link-serial-number` — associer un S/N existant à
   une ligne de préparation (renseigne automatiquement `assigned_to` avec le
   nom du client de la commande)
@@ -71,23 +71,26 @@ Le mapping produit Pennylane ↔ nomenclature se fait via `pennylane_product_id`
 sur `products` ; une ligne de facture sans produit reconnu, ou sans produit du
 tout (remise, texte libre), est ignorée lors de l'import.
 
-## Module Sendcloud (étiquetage)
+## Module Sendcloud (validation humaine avant expédition)
 
-Nécessite `SENDCLOUD_PUBLIC_KEY`, `SENDCLOUD_PRIVATE_KEY`,
-`SENDCLOUD_SENDER_ADDRESS_ID` (adresse d'expédition pré-configurée dans le
-panel Sendcloud) et `SENDCLOUD_SHIPPING_OPTION_CODE` (voir `.env.example`).
-Sans ces 4 valeurs, l'endpoint répond une erreur claire plutôt que de planter.
+Nécessite `SENDCLOUD_PUBLIC_KEY`, `SENDCLOUD_PRIVATE_KEY` et
+`SENDCLOUD_INTEGRATION_ID` (voir `.env.example`). Ce dernier vient d'une
+"Integration" créée dans le panel Sendcloud (Settings > Integrations),
+requise par l'API Orders. Sans ces 3 valeurs, l'endpoint répond une erreur
+claire plutôt que de planter.
 
-- `POST /shipments/:id/create-label` — `{"weight_kg": 1.2}` annonce le colis
-  auprès du transporteur, enregistre le tracking et le lien de l'étiquette,
-  et passe le statut de la commande à `labeled`. Idempotent : rejouer l'appel
-  sur une commande déjà étiquetée renvoie l'étiquette existante sans repayer
-  le transporteur (`external_reference_id` = l'id de la commande côté
-  Sendcloud, qui dédoublonne).
-- Le PDF de l'étiquette (base64) est renvoyé une seule fois, dans la réponse
-  de création — récupère-le ou le lien `label_link` à ce moment-là si tu veux
-  l'archiver ; les appels suivants ne renvoient plus l'étiquette déjà créée.
+Le système **ne crée jamais d'étiquette ni ne déclenche de facturation
+transporteur automatiquement** — il pousse juste une "order" chez Sendcloud
+pour qu'un humain la complète (infos douane si besoin) et crée l'étiquette
+manuellement depuis le panel Sendcloud. C'est volontaire : une déclaration
+douane automatique mal remplie peut bloquer un colis, donc la décision finale
+reste toujours humaine.
 
-⚠️ Chaque appel réussi crée un colis facturé chez le transporteur (annulable
-dans le délai indiqué par Sendcloud). Pour tester sans frais, utilise le code
-`sendcloud:letter` comme `SENDCLOUD_SHIPPING_OPTION_CODE`.
+- `POST /shipments/:id/send-to-sendcloud` — `{"weight_kg": 1.2}` pousse la
+  commande (adresse, lignes, montants) comme order Sendcloud et passe le
+  statut à `sent_to_sendcloud`. Idempotent : rejouer l'appel sur une commande
+  déjà envoyée renvoie l'order existant plutôt que d'en créer un doublon
+  (upsert Sendcloud sur `order_id` = l'id de la commande côté nous).
+- Les montants par ligne viennent du champ `amount` de la facture Pennylane
+  (`amount_eur` sur `shipment_lines`), pour que l'humain ait de quoi remplir
+  la douane sans retourner sur Pennylane.
