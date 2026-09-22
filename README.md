@@ -16,8 +16,8 @@ Workspace Cargo multi-crates :
   lignes de facture, clients)
 - `crates/shipping` — commandes à préparer (shipments) importées depuis
   Pennylane, liées à la nomenclature et aux S/N
-- `crates/sendcloud` — client HTTP vers l'API v3 Sendcloud (création et
-  annonce d'un colis, récupération de l'étiquette)
+- `crates/sendcloud` — client HTTP vers l'API v3 Sendcloud (Orders API,
+  pour validation humaine avant étiquetage)
 - `crates/api` — serveur HTTP (Axum) exposant les modules
 - `migration` — migrations de schéma (SeaORM)
 
@@ -33,6 +33,12 @@ cargo run --bin api
 ```
 
 L'API écoute sur `http://localhost:8080`.
+
+## Authentification
+
+Toute l'API/UI est protégée par Basic Auth (`APP_USERNAME`/`APP_PASSWORD`,
+requis — l'app refuse de démarrer sans), sauf `/health` (pour les contrôles
+de santé Fly). Le navigateur affiche une invite native au premier accès.
 
 ## Module Nomenclature & Numéros de série
 

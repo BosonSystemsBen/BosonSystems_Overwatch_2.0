@@ -8,6 +8,7 @@ use pennylane::PennylaneClient;
 use sea_orm::Database;
 use sendcloud::SendcloudClient;
 use state::AppState;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 #[tokio::main]
 async fn main() {
@@ -37,8 +38,7 @@ async fn main() {
 
     let state = AppState { db, pennylane, sendcloud };
 
-    let app = Router::new()
-        .route("/health", get(|| async { "ok" }))
+    let protected = Router::new()
         .route(
             "/",
             get(|| async { Html(include_str!("../static/index.html")) }),
@@ -46,7 +46,15 @@ async fn main() {
         .merge(routes::products::router())
         .merge(routes::serial_numbers::router())
         .merge(routes::shipments::router())
-        .with_state(state);
+        .with_state(state)
+        .layer({
+            #[allow(deprecated)] // the simple username/password check is exactly what we want here
+            ValidateRequestHeaderLayer::basic(&config.app_username, &config.app_password)
+        });
+
+    let app = Router::new()
+        .route("/health", get(|| async { "ok" }))
+        .merge(protected);
 
     let listener = tokio::net::TcpListener::bind(&config.listen_addr)
         .await

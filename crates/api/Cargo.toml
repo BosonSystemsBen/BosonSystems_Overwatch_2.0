@@ -17,3 +17,4 @@ uuid.workspace = true
 sea-orm.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+tower-http = { version = "0.6", features = ["validate-request", "auth"] }
