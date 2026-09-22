@@ -72,4 +72,5 @@ pub enum Product {
     DetectionPattern,
     CreatedAt,
     UpdatedAt,
+    PennylaneProductId,
 }

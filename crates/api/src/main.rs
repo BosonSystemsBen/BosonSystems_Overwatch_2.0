@@ -4,6 +4,7 @@ mod state;
 
 use axum::{routing::get, Router};
 use common::Config;
+use pennylane::PennylaneClient;
 use sea_orm::Database;
 use state::AppState;
 
@@ -16,12 +17,18 @@ async fn main() {
         .await
         .expect("failed to connect to database");
 
-    let state = AppState { db };
+    let pennylane = config
+        .pennylane_api_token
+        .clone()
+        .map(|token| PennylaneClient::new(config.pennylane_base_url.clone(), token));
+
+    let state = AppState { db, pennylane };
 
     let app = Router::new()
         .route("/health", get(|| async { "ok" }))
         .merge(routes::products::router())
         .merge(routes::serial_numbers::router())
+        .merge(routes::shipments::router())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&config.listen_addr)

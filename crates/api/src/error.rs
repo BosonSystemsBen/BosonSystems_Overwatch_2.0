@@ -15,6 +15,7 @@ impl IntoResponse for ApiError {
             AppError::NotFound => (StatusCode::NOT_FOUND, self.0.to_string()),
             AppError::Validation(_) => (StatusCode::BAD_REQUEST, self.0.to_string()),
             AppError::Db(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.0.to_string()),
+            AppError::External(_) => (StatusCode::BAD_GATEWAY, self.0.to_string()),
         };
         (status, Json(ErrorBody { error: message })).into_response()
     }

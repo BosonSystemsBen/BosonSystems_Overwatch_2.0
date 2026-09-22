@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "crates/common",
     "crates/nomenclature",
+    "crates/pennylane",
+    "crates/shipping",
     "crates/api",
     "migration",
 ]

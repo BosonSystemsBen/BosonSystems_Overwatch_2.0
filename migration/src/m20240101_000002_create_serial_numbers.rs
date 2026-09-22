@@ -81,4 +81,5 @@ pub enum SerialNumber {
     AssignedTo,
     CreatedAt,
     UpdatedAt,
+    ShipmentLineId,
 }

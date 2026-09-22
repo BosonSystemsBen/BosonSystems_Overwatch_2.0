@@ -1,7 +1,11 @@
 pub use sea_orm_migration::prelude::*;
 
-mod m20240101_000001_create_products;
-mod m20240101_000002_create_serial_numbers;
+pub mod m20240101_000001_create_products;
+pub mod m20240101_000002_create_serial_numbers;
+mod m20240101_000003_add_pennylane_product_id;
+pub mod m20240101_000004_create_shipments;
+pub mod m20240101_000005_create_shipment_lines;
+mod m20240101_000006_add_shipment_line_to_serial_numbers;
 
 pub struct Migrator;
 
@@ -11,6 +15,10 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20240101_000001_create_products::Migration),
             Box::new(m20240101_000002_create_serial_numbers::Migration),
+            Box::new(m20240101_000003_add_pennylane_product_id::Migration),
+            Box::new(m20240101_000004_create_shipments::Migration),
+            Box::new(m20240101_000005_create_shipment_lines::Migration),
+            Box::new(m20240101_000006_add_shipment_line_to_serial_numbers::Migration),
         ]
     }
 }

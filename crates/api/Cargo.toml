@@ -6,6 +6,8 @@ version.workspace = true
 [dependencies]
 common = { path = "../common" }
 nomenclature = { path = "../nomenclature" }
+pennylane = { path = "../pennylane" }
+shipping = { path = "../shipping" }
 axum.workspace = true
 tokio.workspace = true
 serde.workspace = true

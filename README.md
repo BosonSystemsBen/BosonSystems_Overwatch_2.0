@@ -12,11 +12,14 @@ Workspace Cargo multi-crates :
 - `crates/common` — types partagés, config, erreurs
 - `crates/nomenclature` — produits (nomenclature) et numéros de série, avec
   détection automatique du produit à partir d'un S/N scanné
+- `crates/pennylane` — client HTTP vers l'API Entreprise Pennylane (factures,
+  lignes de facture, clients)
+- `crates/shipping` — commandes à préparer (shipments) importées depuis
+  Pennylane, liées à la nomenclature et aux S/N
 - `crates/api` — serveur HTTP (Axum) exposant les modules
 - `migration` — migrations de schéma (SeaORM)
 
-D'autres crates (`pennylane`, `sendcloud`, `shipping`, `worker`) seront ajoutés
-module par module.
+D'autres crates (`sendcloud`, `worker`) seront ajoutés module par module.
 
 ## Démarrer en local
 
@@ -44,3 +47,24 @@ L'API écoute sur `http://localhost:8080`.
 
 Tout (nomenclature, règles de détection, associations) est éditable à tout
 moment via ces endpoints.
+
+## Module Pennylane & Préparation d'expédition
+
+Nécessite `PENNYLANE_API_TOKEN` (voir `.env.example`). Un produit doit avoir
+son `pennylane_product_id` renseigné (`PUT /products/:id`) pour que ses
+lignes de facture soient automatiquement rattachées à la nomenclature.
+
+- `POST /pennylane/sync` — importe les factures clients finalisées (non
+  brouillon) depuis Pennylane comme `shipments` à préparer, avec leurs lignes
+  d'articles et l'adresse de livraison du client
+- `GET /shipments` — lister les commandes à préparer
+- `GET /shipments/:id` — détail d'une commande avec ses lignes
+- `PUT /shipments/:id/status` — changer le statut (`pending`, `ready`,
+  `labeled`, `shipped`) — toujours modifiable manuellement
+- `POST /shipment-lines/:id/link-serial-number` — associer un S/N existant à
+  une ligne de préparation (renseigne automatiquement `assigned_to` avec le
+  nom du client de la commande)
+
+Le mapping produit Pennylane ↔ nomenclature se fait via `pennylane_product_id`
+sur `products` ; une ligne de facture sans produit reconnu, ou sans produit du
+tout (remise, texte libre), est ignorée lors de l'import.

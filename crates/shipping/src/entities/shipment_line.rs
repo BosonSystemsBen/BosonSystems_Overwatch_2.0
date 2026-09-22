@@ -3,28 +3,32 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "products")]
+#[sea_orm(table_name = "shipment_lines")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub sku: String,
-    pub name: String,
-    pub requires_serial: bool,
-    pub detection_pattern: Option<String>,
+    pub shipment_id: Uuid,
+    pub pennylane_line_id: i64,
+    pub product_id: Option<Uuid>,
+    pub label: String,
+    pub quantity: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub pennylane_product_id: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::serial_number::Entity")]
-    SerialNumber,
+    #[sea_orm(
+        belongs_to = "super::shipment::Entity",
+        from = "Column::ShipmentId",
+        to = "super::shipment::Column::Id"
+    )]
+    Shipment,
 }
 
-impl Related<super::serial_number::Entity> for Entity {
+impl Related<super::shipment::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::SerialNumber.def()
+        Relation::Shipment.def()
     }
 }
 
