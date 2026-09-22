@@ -16,10 +16,12 @@ Workspace Cargo multi-crates :
   lignes de facture, clients)
 - `crates/shipping` — commandes à préparer (shipments) importées depuis
   Pennylane, liées à la nomenclature et aux S/N
+- `crates/sendcloud` — client HTTP vers l'API v3 Sendcloud (création et
+  annonce d'un colis, récupération de l'étiquette)
 - `crates/api` — serveur HTTP (Axum) exposant les modules
 - `migration` — migrations de schéma (SeaORM)
 
-D'autres crates (`sendcloud`, `worker`) seront ajoutés module par module.
+D'autres crates (`worker`) seront ajoutés module par module.
 
 ## Démarrer en local
 
@@ -68,3 +70,24 @@ lignes de facture soient automatiquement rattachées à la nomenclature.
 Le mapping produit Pennylane ↔ nomenclature se fait via `pennylane_product_id`
 sur `products` ; une ligne de facture sans produit reconnu, ou sans produit du
 tout (remise, texte libre), est ignorée lors de l'import.
+
+## Module Sendcloud (étiquetage)
+
+Nécessite `SENDCLOUD_PUBLIC_KEY`, `SENDCLOUD_PRIVATE_KEY`,
+`SENDCLOUD_SENDER_ADDRESS_ID` (adresse d'expédition pré-configurée dans le
+panel Sendcloud) et `SENDCLOUD_SHIPPING_OPTION_CODE` (voir `.env.example`).
+Sans ces 4 valeurs, l'endpoint répond une erreur claire plutôt que de planter.
+
+- `POST /shipments/:id/create-label` — `{"weight_kg": 1.2}` annonce le colis
+  auprès du transporteur, enregistre le tracking et le lien de l'étiquette,
+  et passe le statut de la commande à `labeled`. Idempotent : rejouer l'appel
+  sur une commande déjà étiquetée renvoie l'étiquette existante sans repayer
+  le transporteur (`external_reference_id` = l'id de la commande côté
+  Sendcloud, qui dédoublonne).
+- Le PDF de l'étiquette (base64) est renvoyé une seule fois, dans la réponse
+  de création — récupère-le ou le lien `label_link` à ce moment-là si tu veux
+  l'archiver ; les appels suivants ne renvoient plus l'étiquette déjà créée.
+
+⚠️ Chaque appel réussi crée un colis facturé chez le transporteur (annulable
+dans le délai indiqué par Sendcloud). Pour tester sans frais, utilise le code
+`sendcloud:letter` comme `SENDCLOUD_SHIPPING_OPTION_CODE`.

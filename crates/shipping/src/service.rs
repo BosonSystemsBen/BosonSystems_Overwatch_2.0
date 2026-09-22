@@ -6,7 +6,7 @@ use sea_orm::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::entities::{shipment, shipment_line};
+use crate::entities::{sendcloud_label, shipment, shipment_line};
 
 #[derive(Debug, Deserialize)]
 pub struct NewShipmentLine {
@@ -127,4 +127,45 @@ pub async fn update_shipment_status(
     active.status = Set(status);
     active.updated_at = Set(Utc::now());
     Ok(active.update(db).await?)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewSendcloudLabel {
+    pub shipment_id: Uuid,
+    pub sendcloud_shipment_id: String,
+    pub sendcloud_parcel_id: i64,
+    pub tracking_number: Option<String>,
+    pub tracking_url: Option<String>,
+    pub label_link: Option<String>,
+    pub status: String,
+}
+
+pub async fn record_label(
+    db: &DatabaseConnection,
+    input: NewSendcloudLabel,
+) -> AppResult<sendcloud_label::Model> {
+    let now = Utc::now();
+    let model = sendcloud_label::ActiveModel {
+        id: Set(Uuid::new_v4()),
+        shipment_id: Set(input.shipment_id),
+        sendcloud_shipment_id: Set(input.sendcloud_shipment_id),
+        sendcloud_parcel_id: Set(input.sendcloud_parcel_id),
+        tracking_number: Set(input.tracking_number),
+        tracking_url: Set(input.tracking_url),
+        label_link: Set(input.label_link),
+        status: Set(input.status),
+        created_at: Set(now),
+        updated_at: Set(now),
+    };
+    Ok(model.insert(db).await?)
+}
+
+pub async fn get_label_for_shipment(
+    db: &DatabaseConnection,
+    shipment_id: Uuid,
+) -> AppResult<Option<sendcloud_label::Model>> {
+    Ok(sendcloud_label::Entity::find()
+        .filter(sendcloud_label::Column::ShipmentId.eq(shipment_id))
+        .one(db)
+        .await?)
 }

@@ -6,7 +6,8 @@ use axum::{response::Html, routing::get, Router};
 use common::Config;
 use pennylane::PennylaneClient;
 use sea_orm::Database;
-use state::AppState;
+use sendcloud::SendcloudClient;
+use state::{AppState, SendcloudSettings};
 
 #[tokio::main]
 async fn main() {
@@ -22,7 +23,24 @@ async fn main() {
         .clone()
         .map(|token| PennylaneClient::new(config.pennylane_base_url.clone(), token));
 
-    let state = AppState { db, pennylane };
+    let sendcloud = match (
+        config.sendcloud_public_key.clone(),
+        config.sendcloud_private_key.clone(),
+        config.sendcloud_sender_address_id,
+        config.sendcloud_shipping_option_code.clone(),
+    ) {
+        (Some(public_key), Some(private_key), Some(sender_address_id), Some(shipping_option_code)) => Some((
+            SendcloudClient::new(config.sendcloud_base_url.clone(), public_key, private_key),
+            SendcloudSettings {
+                sender_address_id,
+                shipping_option_code,
+                contract_id: config.sendcloud_contract_id,
+            },
+        )),
+        _ => None,
+    };
+
+    let state = AppState { db, pennylane, sendcloud };
 
     let app = Router::new()
         .route("/health", get(|| async { "ok" }))

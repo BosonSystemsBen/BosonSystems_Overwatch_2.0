@@ -4,6 +4,7 @@ members = [
     "crates/common",
     "crates/nomenclature",
     "crates/pennylane",
+    "crates/sendcloud",
     "crates/shipping",
     "crates/api",
     "migration",

@@ -24,6 +24,12 @@ pub struct Config {
     pub listen_addr: String,
     pub pennylane_base_url: String,
     pub pennylane_api_token: Option<String>,
+    pub sendcloud_base_url: String,
+    pub sendcloud_public_key: Option<String>,
+    pub sendcloud_private_key: Option<String>,
+    pub sendcloud_sender_address_id: Option<i64>,
+    pub sendcloud_shipping_option_code: Option<String>,
+    pub sendcloud_contract_id: Option<i64>,
 }
 
 impl Config {
@@ -36,6 +42,17 @@ impl Config {
             pennylane_base_url: std::env::var("PENNYLANE_BASE_URL")
                 .unwrap_or_else(|_| "https://app.pennylane.com".to_string()),
             pennylane_api_token: std::env::var("PENNYLANE_API_TOKEN").ok(),
+            sendcloud_base_url: std::env::var("SENDCLOUD_BASE_URL")
+                .unwrap_or_else(|_| "https://panel.sendcloud.sc/api/v3".to_string()),
+            sendcloud_public_key: std::env::var("SENDCLOUD_PUBLIC_KEY").ok(),
+            sendcloud_private_key: std::env::var("SENDCLOUD_PRIVATE_KEY").ok(),
+            sendcloud_sender_address_id: std::env::var("SENDCLOUD_SENDER_ADDRESS_ID")
+                .ok()
+                .and_then(|v| v.parse().ok()),
+            sendcloud_shipping_option_code: std::env::var("SENDCLOUD_SHIPPING_OPTION_CODE").ok(),
+            sendcloud_contract_id: std::env::var("SENDCLOUD_CONTRACT_ID")
+                .ok()
+                .and_then(|v| v.parse().ok()),
         }
     }
 }
